@@ -868,3 +868,72 @@ html[dir="rtl"] .close-button {
   margin-top: 1rem;
 }
 
+
+/* src/App.css (המשך - הוסף או עדכן את הסגנונות הבאים) */
+
+/* ... (כל הסגנונות הקודמים נשארים) ... */
+
+/* PostsPage Styles - עדכונים והוספות */
+.posts-page-container .add-post-button {
+  margin-left: 0; /* התאמה ל-RTL אם צריך */
+  margin-right: 0; /* התאמה ל-RTL אם צריך */
+}
+
+.posts-controls { /* דומה ל-controls-container של Todos */
+  /* אפשר להשתמש באותו .controls-container אם הסגנון זהה */
+  /* או להוסיף סגנונות ספציפיים אם צריך */
+}
+
+.post-list-item-wrapper {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.07);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    /* margin-bottom: 1rem; */ /* אם לא משתמשים ב-gap ב-grid */
+}
+
+.post-list-item .post-item-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap; /* למקרה של כפתורים רבים */
+}
+
+.add-post-form .form-actions,
+.edit-comment-form .form-actions { /* עיצוב לכפתורים בטפסים */
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.post-detail-view .post-detail-title {
+    /* אפשר להוסיף כאן עיצוב ספציפי לכותרת עם ה-userId */
+    font-size: 1.6rem; /* מעט קטן יותר מהכותרת הראשית של הדף */
+}
+
+.comment-actions {
+    margin-top: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end; /* כפתורים בצד שמאל (ב-RTL) */
+}
+
+html[dir="rtl"] .comment-actions {
+    justify-content: flex-start; /* התאמה ל-RTL */
+}
+
+.edit-comment-form {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    padding: 0.5rem;
+    background-color: #f0f0f0; /* רקע קל לטופס עריכת תגובה */
+    border-radius: 4px;
+}
+.edit-comment-form textarea {
+    margin-bottom: 0.5rem;
+}
+
+/* ודא ששאר הסגנונות הכלליים (כמו .button, .form-input וכו') מכסים את כל הצרכים */

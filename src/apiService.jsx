@@ -1,63 +1,33 @@
-// src/apiService.js
+// src/apiService.js (או apiService.jsx)
 
-// הגדרת כתובת הבסיס של השרת שלנו (json-server).
-// חשוב לוודא שהפורט (3001) תואם לפורט שבו אתה מריץ את json-server.
-const BASE_URL = 'http://localhost:3001';
+const BASE_URL = 'http://localhost:3001'; 
 
-/**
- * פונקציה אסינכרונית היא פונקציה שתמיד מחזירה Promise.
- * השימוש ב-await בתוך פונקציה אסינכרונית "עוצר" את ריצת הפונקציה
- * עד שה-Promise שלידו (במקרה זה, התגובה מ-fetch) נפתר (חוזרת תשובה מהשרת).
- */
+// ... (פונקציות קיימות כמו getUserByUsername, registerUser, וכו' נשארות) ...
 
-// --- פונקציות שירות עבור משאב 'users' ---
-
-/**
- * שליפת משתמש לפי שם משתמש.
- * @param {string} username - שם המשתמש לחיפוש.
- * @returns {Promise<Array>} Promise שמכיל מערך של משתמשים תואמים (בדרך כלל אחד או אפס).
- */
+// --- User API ---
 export async function getUserByUsername(username) {
-  // מבצעים קריאת GET לשרת, לנקודת הקצה /users, עם פרמטר חיפוש username.
-  // `Workspace` מחזיר Promise.
   const response = await fetch(`${BASE_URL}/users?username=${username}`);
-  
-  // בודקים אם התגובה מהשרת הייתה מוצלחת (סטטוס HTTP בטווח 200-299).
   if (!response.ok) {
-    // אם לא, זורקים שגיאה עם מידע על הבעיה.
     throw new Error(`שגיאת רשת: ${response.status} - ${response.statusText}`);
   }
-  // אם התגובה מוצלחת, ממירים את גוף התגובה מ-JSON לאובייקט JavaScript.
-  // response.json() גם הוא מחזיר Promise.
   return response.json();
 }
 
-/**
- * רישום משתמש חדש.
- * @param {object} userData - אובייקט עם פרטי המשתמש החדש.
- * @returns {Promise<object>} Promise שמכיל את אובייקט המשתמש שנוצר (כולל ID מהשרת).
- */
 export async function registerUser(userData) {
   const response = await fetch(`${BASE_URL}/users`, {
-    method: 'POST', // מגדירים את שיטת ה-HTTP ל-POST ליצירת משאב חדש.
+    method: 'POST',
     headers: {
-      'Content-Type': 'application/json', // מציינים שהגוף של הבקשה הוא בפורמט JSON.
+      'Content-Type': 'application/json',
     },
-    body: JSON.stringify(userData), // ממירים את אובייקט הנתונים למחרוזת JSON.
+    body: JSON.stringify(userData),
   });
   if (!response.ok) {
-    // ננסה לקרוא את גוף השגיאה מהשרת אם קיים
     const errorData = await response.json().catch(() => ({ message: 'שגיאה לא ידועה ברישום משתמש' }));
     throw new Error(errorData.message || `שגיאה ברישום: ${response.status}`);
   }
   return response.json();
 }
 
-/**
- * שליפת משתמש לפי ID.
- * @param {string|number} userId - ה-ID של המשתמש.
- * @returns {Promise<object>} Promise שמכיל את אובייקט המשתמש.
- */
 export async function getUserById(userId) {
     const response = await fetch(`${BASE_URL}/users/${userId}`);
     if (!response.ok) {
@@ -67,24 +37,13 @@ export async function getUserById(userId) {
 }
 
 
-// --- פונקציות שירות עבור משאב 'todos' ---
-
-/**
- * שליפת כל המשימות (todos) של משתמש ספציפי.
- * @param {string|number} userId - ה-ID של המשתמש.
- * @returns {Promise<Array>} Promise שמכיל מערך של משימות.
- */
+// --- Todos API ---
 export async function getTodosByUserId(userId) {
   const response = await fetch(`${BASE_URL}/todos?userId=${userId}`);
   if (!response.ok) throw new Error('שגיאה בטעינת משימות');
   return response.json();
 }
 
-/**
- * הוספת משימה חדשה.
- * @param {object} todoData - אובייקט עם פרטי המשימה החדשה (כולל userId, title, completed).
- * @returns {Promise<object>} Promise שמכיל את אובייקט המשימה שנוצרה.
- */
 export async function addTodo(todoData) {
   const response = await fetch(`${BASE_URL}/todos`, {
     method: 'POST',
@@ -95,15 +54,9 @@ export async function addTodo(todoData) {
   return response.json();
 }
 
-/**
- * עדכון משימה קיימת.
- * @param {string|number} todoId - ה-ID של המשימה לעדכון.
- * @param {object} updatedData - אובייקט עם הנתונים המעודכנים של המשימה.
- * @returns {Promise<object>} Promise שמכיל את אובייקט המשימה המעודכן.
- */
 export async function updateTodo(todoId, updatedData) {
   const response = await fetch(`${BASE_URL}/todos/${todoId}`, {
-    method: 'PUT', // PUT מעדכן את כל האובייקט. אפשר להשתמש גם ב-PATCH לעדכון חלקי.
+    method: 'PUT', 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updatedData),
   });
@@ -111,11 +64,6 @@ export async function updateTodo(todoId, updatedData) {
   return response.json();
 }
 
-/**
- * מחיקת משימה.
- * @param {string|number} todoId - ה-ID של המשימה למחיקה.
- * @returns {Promise<object>} Promise (json-server מחזיר אובייקט ריק {} במחיקה מוצלחת).
- */
 export async function deleteTodo(todoId) {
   const response = await fetch(`${BASE_URL}/todos/${todoId}`, {
     method: 'DELETE',
@@ -124,12 +72,16 @@ export async function deleteTodo(todoId) {
   return response.json(); 
 }
 
-// --- פונקציות שירות עבור משאב 'posts' ---
-// (מבנה דומה לפונקציות של todos, מותאם לשדות של posts)
+// --- Posts API ---
+export async function getAllPosts() { // <-- פונקציה חדשה
+  const response = await fetch(`${BASE_URL}/posts`);
+  if (!response.ok) throw new Error('שגיאה בטעינת כל הפוסטים');
+  return response.json();
+}
 
-export async function getPostsByUserId(userId) {
+export async function getPostsByUserId(userId) { // נשאיר אותה אם נרצה בעתיד "הפוסטים שלי"
   const response = await fetch(`${BASE_URL}/posts?userId=${userId}`);
-  if (!response.ok) throw new Error('שגיאה בטעינת פוסטים');
+  if (!response.ok) throw new Error('שגיאה בטעינת פוסטים של משתמש');
   return response.json();
 }
 
@@ -167,7 +119,7 @@ export async function deletePost(postId) {
   return response.json();
 }
 
-// --- פונקציות שירות עבור משאב 'comments' ---
+// --- Comments API ---
 export async function getCommentsByPostId(postId) {
   const response = await fetch(`${BASE_URL}/comments?postId=${postId}`);
   if (!response.ok) throw new Error('שגיאה בטעינת תגובות');
@@ -184,20 +136,37 @@ export async function addComment(commentData) {
   return response.json();
 }
 
-// --- פונקציות שירות עבור משאב 'albums' ---
+export async function updateComment(commentId, commentData) { // <-- פונקציה חדשה לעדכון תגובה
+  const response = await fetch(`${BASE_URL}/comments/${commentId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(commentData),
+  });
+  if (!response.ok) throw new Error('שגיאה בעדכון תגובה');
+  return response.json();
+}
+
+export async function deleteComment(commentId) { // <-- פונקציה חדשה למחיקת תגובה
+  const response = await fetch(`${BASE_URL}/comments/${commentId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('שגיאה במחיקת תגובה');
+  return response.json();
+}
+
+
+// --- Albums API ---
 export async function getAlbumsByUserId(userId) {
   const response = await fetch(`${BASE_URL}/albums?userId=${userId}`);
   if (!response.ok) throw new Error('שגיאה בטעינת אלבומים');
   return response.json();
 }
 
-// (כאן אפשר להוסיף פונקציות ל-addAlbum, updateAlbum, deleteAlbum אם נדרש בפרויקט)
-
-// --- פונקציות שירות עבור משאב 'photos' ---
+// --- Photos API ---
 export async function getPhotosByAlbumId(albumId) {
   const response = await fetch(`${BASE_URL}/photos?albumId=${albumId}`);
   if (!response.ok) throw new Error('שגיאה בטעינת תמונות');
   return response.json();
 }
 
-// (כאן אפשר להוסיף פונקציות ל-addPhoto, deletePhoto אם נדרש בפרויקט)
+

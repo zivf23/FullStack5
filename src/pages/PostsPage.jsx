@@ -1,26 +1,111 @@
-// src/pages/PostsPage.js
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useAuth } from '../App';
-import { getPostsByUserId, getCommentsByPostId, addPost, deletePost, addComment } from '../apiService';
+// src/pages/PostsPage.jsx
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+// useParams לא נחוץ כאן אם מציגים את כל הפוסטים, אך נשאיר למקרה שנרצה להשתמש בו לקישור ישיר לפוסט בעתיד
+import { useParams } from 'react-router-dom'; 
+import { useAuth } from '../App.jsx';
+import { 
+    getAllPosts, 
+    getPostById, // ודא שהפונקציה הזו מיוצאת מ-apiService.js/jsx
+    getCommentsByPostId, 
+    addPost, 
+    updatePost, 
+    deletePost, 
+    addComment,
+    updateComment, 
+    deleteComment  
+} from '../apiService';
 
-// רכיב פנימי להצגת פוסט בודד ברשימה
-function PostListItem({ post, onViewDetails }) {
+// רכיב להצגת פוסט בודד ברשימה
+function PostListItem({ post, onViewDetails, onEditPost, onDeletePost, currentUser }) {
+  const isOwner = currentUser && currentUser.id === post.userId;
   return (
     <div className="post-list-item">
-      <h3 className="post-item-title">{post.title}</h3>
-      <p className="post-item-excerpt">{post.body.substring(0, 100)}...</p>
-      <button onClick={() => onViewDetails(post.id)} className="button button-outline">
-        הצג פרטים ותגובות
-      </button>
+      <h3 className="post-item-title">(ID: {post.id}) {post.title}</h3>
+      <div className="post-item-actions">
+        <button onClick={() => onViewDetails(post.id)} className="button button-outline">
+          הצג פרטים ותגובות
+        </button>
+        {isOwner && ( 
+          <>
+            <button onClick={() => onEditPost(post)} className="button button-edit">ערוך פוסט</button>
+            <button onClick={() => onDeletePost(post.id)} className="button button-delete">מחק פוסט</button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
 
-// רכיב פנימי להצגת פרטי פוסט מלאים ותגובות
-function PostDetailView({ post, comments, onAddComment, onClose, currentUser }) {
+// טופס להוספה/עריכה של פוסט
+function PostForm({ onSubmit, initialData = null, onCancel, formTitle }) {
+    const [title, setTitle] = useState(initialData ? initialData.title : '');
+    const [body, setBody] = useState(initialData ? initialData.body : '');
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        if (initialData) {
+            setTitle(initialData.title);
+            setBody(initialData.body);
+        } else {
+            setTitle('');
+            setBody('');
+        }
+    }, [initialData]);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        if (!title.trim() || !body.trim()) {
+            setError("כותרת ותוכן הפוסט לא יכולים להיות ריקים.");
+            return;
+        }
+        try {
+            await onSubmit({ title, body });
+        } catch (err) {
+            setError(err.message || "שגיאה בשמירת הפוסט");
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="add-post-form"> 
+            <h3 className="form-title">{formTitle}</h3>
+            <div>
+                <label htmlFor="post-form-title" className="form-label">כותרת:</label>
+                <input
+                    id="post-form-title"
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="form-input"
+                    required
+                />
+            </div>
+            <div>
+                <label htmlFor="post-form-body" className="form-label">תוכן:</label>
+                <textarea
+                    id="post-form-body"
+                    value={body}
+                    onChange={(e) => setBody(e.target.value)}
+                    rows="5"
+                    className="form-textarea"
+                    required
+                />
+            </div>
+            {error && <p className="form-error-message">{error}</p>}
+            <div className="form-actions">
+                <button type="submit" className="button button-green">{initialData ? "עדכן פוסט" : "פרסם פוסט"}</button>
+                {onCancel && <button type="button" onClick={onCancel} className="button button-secondary">בטל</button>}
+            </div>
+        </form>
+    );
+}
+
+
+// רכיב להצגת פרטי פוסט ותגובות
+function PostDetailView({ post, comments, onAddComment, onClose, currentUser, onEditComment, onDeleteComment }) {
   const [newCommentText, setNewCommentText] = useState('');
   const [commentError, setCommentError] = useState('');
+  const [editingComment, setEditingComment] = useState(null); 
 
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
@@ -29,25 +114,37 @@ function PostDetailView({ post, comments, onAddComment, onClose, currentUser }) 
       return;
     }
     setCommentError('');
-    
     const commentData = {
       postId: post.id,
-      name: `תגובה מאת: ${currentUser.name || currentUser.username}`, // שימוש בשם המשתמש
-      email: currentUser.email, // שימוש באימייל המשתמש
+      name: `תגובה מאת: ${currentUser.name || currentUser.username}`,
+      email: currentUser.email, 
       body: newCommentText,
     };
     try {
       await onAddComment(commentData);
-      setNewCommentText(''); // איפוס שדה התגובה
+      setNewCommentText(''); 
     } catch (error) {
       setCommentError(error.message || "שגיאה בהוספת תגובה");
     }
   };
 
+  const handleEditCommentSubmit = async (commentId, updatedBody) => {
+    const originalComment = comments.find(c => c.id === commentId);
+    if (!originalComment) return;
+
+    const updatedCommentData = { ...originalComment, body: updatedBody };
+    try {
+        await onEditComment(commentId, updatedCommentData);
+        setEditingComment(null); 
+    } catch (error) {
+        console.error("Error updating comment:", error);
+    }
+  };
+
   return (
     <div className="post-detail-view">
-      <button onClick={onClose} className="button button-secondary close-button">סגור פרטים</button>
-      <h2 className="post-detail-title">{post.title}</h2>
+      <button onClick={onClose} className="button button-secondary close-button">חזור לרשימת הפוסטים</button>
+      <h2 className="post-detail-title">{post.title} (נכתב על ידי משתמש ID: {post.userId})</h2>
       <p className="post-detail-body">{post.body}</p>
       <hr className="section-divider" />
       <h3 className="comments-title">תגובות</h3>
@@ -55,8 +152,24 @@ function PostDetailView({ post, comments, onAddComment, onClose, currentUser }) 
         <ul className="comment-list">
           {comments.map(comment => (
             <li key={comment.id} className="comment-item">
-              <strong>{comment.name} ({comment.email}):</strong>
-              <p>{comment.body}</p>
+              {editingComment && editingComment.id === comment.id ? (
+                <EditCommentForm 
+                    comment={editingComment} 
+                    onSubmit={(updatedBody) => handleEditCommentSubmit(comment.id, updatedBody)}
+                    onCancel={() => setEditingComment(null)}
+                />
+              ) : (
+                <>
+                  <strong>{comment.name} ({comment.email}):</strong>
+                  <p>{comment.body}</p>
+                  {currentUser && currentUser.email === comment.email && ( 
+                    <div className="comment-actions">
+                      <button onClick={() => setEditingComment(comment)} className="button-edit">ערוך</button>
+                      <button onClick={() => onDeleteComment(comment.id)} className="button-delete">מחק</button>
+                    </div>
+                  )}
+                </>
+              )}
             </li>
           ))}
         </ul>
@@ -79,59 +192,76 @@ function PostDetailView({ post, comments, onAddComment, onClose, currentUser }) 
   );
 }
 
+// טופס לעריכת תגובה
+function EditCommentForm({ comment, onSubmit, onCancel }) {
+    const [body, setBody] = useState(comment.body);
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onSubmit(body);
+    };
+    return (
+        <form onSubmit={handleSubmit} className="edit-comment-form">
+            <textarea 
+                value={body} 
+                onChange={(e) => setBody(e.target.value)} 
+                rows="2" 
+                className="form-textarea"
+            />
+            <div className="form-actions">
+                <button type="submit" className="button button-green">שמור שינויים</button>
+                <button type="button" onClick={onCancel} className="button button-secondary">בטל</button>
+            </div>
+        </form>
+    );
+}
 
 export default function PostsPage() {
-  const { user } = useAuth();
-  const { userId } = useParams();
+  const { user } = useAuth(); 
   const [posts, setPosts] = useState([]);
-  const [selectedPost, setSelectedPost] = useState(null);
+  const [selectedPost, setSelectedPost] = useState(null); 
+  const [editingPost, setEditingPost] = useState(null); 
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingComments, setLoadingComments] = useState(false);
-  const [error, setError] = useState(null);
-  const [pageError, setPageError] = useState(null); // שגיאה ברמת העמוד
-  const [formError, setFormError] = useState(null); // שגיאה ספציפית לטופס
+  const [pageError, setPageError] = useState(null);
+  const [formError, setFormError] = useState(null);
 
   const [showAddPostForm, setShowAddPostForm] = useState(false);
-  const [newPostTitle, setNewPostTitle] = useState('');
-  const [newPostBody, setNewPostBody] = useState('');
+  
+  const [searchTermId, setSearchTermId] = useState('');
+  const [searchTermTitle, setSearchTermTitle] = useState('');
 
 
-  const fetchPosts = useCallback(async () => {
-    if (user && userId === user.id.toString()) {
+  const fetchAllPosts = useCallback(async () => {
       setLoading(true);
       setPageError(null);
       try {
-        const data = await getPostsByUserId(user.id);
-        setPosts(data.sort((a, b) => b.id - a.id)); // מיון פוסטים מהחדש לישן
+        const data = await getAllPosts(); 
+        setPosts(data.sort((a, b) => b.id - a.id)); 
       } catch (err) {
         setPageError(err.message);
       } finally {
         setLoading(false);
       }
-    } else if (user && userId !== user.id.toString()) {
-        setPageError("אין לך הרשאה לצפות בפוסטים אלו.");
-        setLoading(false);
-        setPosts([]);
-    }
-  }, [user, userId]);
+  }, []);
 
   useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
+    if (user) { 
+        fetchAllPosts();
+    } else {
+        setPosts([]); 
+        setLoading(false);
+    }
+  }, [user, fetchAllPosts]);
 
   const handleViewDetails = async (postId) => {
     setLoadingComments(true);
     setPageError(null); 
     try {
-      // משיכת הפוסט מהרשימה הקיימת כדי לחסוך קריאת API אם כבר יש לנו אותו
-      const postData = posts.find(p => p.id === postId); 
-      if (!postData) {
-          throw new Error("הפוסט לא נמצא ברשימה."); // יכול לקרות אם הרשימה לא עדכנית
-      }
+      const postData = await getPostById(postId); // <-- שימוש ב-getPostById
       const commentsData = await getCommentsByPostId(postId);
       setSelectedPost(postData);
-      setComments(commentsData.sort((a,b) => a.id - b.id)); // מיון תגובות לפי סדר כרונולוגי
+      setComments(commentsData.sort((a,b) => a.id - b.id)); 
     } catch (err) {
       setPageError(err.message);
       setSelectedPost(null); 
@@ -144,32 +274,49 @@ export default function PostsPage() {
   const handleCloseDetails = () => {
     setSelectedPost(null);
     setComments([]);
-    setPageError(null); // איפוס שגיאה כללית בעת סגירת פרטים
+    setPageError(null); 
   };
 
-  const handleAddPostSubmit = async (e) => {
-    e.preventDefault();
-    if (!newPostTitle.trim() || !newPostBody.trim()) {
-        setFormError("כותרת ותוכן הפוסט לא יכולים להיות ריקים.");
+  const handleAddPost = async (postDataFromForm) => {
+    if (!user) {
+        setFormError("עליך להיות מחובר כדי להוסיף פוסט.");
         return;
     }
     setFormError('');
     setPageError('');
     try {
-        const postData = { title: newPostTitle, body: newPostBody, userId: parseInt(user.id) };
-        const newPost = await addPost(postData);
-        setPosts(prevPosts => [newPost, ...prevPosts].sort((a, b) => b.id - a.id)); // הוספה ומיון מחדש
-        setNewPostTitle('');
-        setNewPostBody('');
-        setShowAddPostForm(false);
+        const postPayload = { ...postDataFromForm, userId: user.id }; 
+        const newPost = await addPost(postPayload);
+        setPosts(prevPosts => [newPost, ...prevPosts].sort((a, b) => b.id - a.id)); 
+        setShowAddPostForm(false); 
     } catch (err) {
         setFormError(err.message || "שגיאה בהוספת פוסט");
     }
   };
 
+  const handleEditPost = (postToEdit) => {
+    setEditingPost(postToEdit);
+    setSelectedPost(null); 
+    setShowAddPostForm(false); 
+  };
+
+  const handleUpdatePost = async (updatedPostDataFromForm) => {
+    if (!editingPost) return;
+    setFormError('');
+    setPageError('');
+    try {
+        const payload = { ...editingPost, ...updatedPostDataFromForm };
+        const updated = await updatePost(editingPost.id, payload);
+        setPosts(prevPosts => prevPosts.map(p => p.id === updated.id ? updated : p).sort((a,b) => b.id - a.id));
+        setEditingPost(null); 
+    } catch (err) {
+        setFormError(err.message || "שגיאה בעדכון הפוסט");
+    }
+  };
+
+
   const handleDeletePost = async (postId) => {
     setPageError('');
-    // TODO: החלף את confirm במודל מותאם אישית כפי שנדרש בפרויקט
     if (window.confirm("האם אתה בטוח שברצונך למחוק פוסט זה וכל התגובות המשויכות אליו?")) {
         try {
             await deletePost(postId); 
@@ -184,60 +331,114 @@ export default function PostsPage() {
   };
   
   const handleAddComment = async (commentData) => {
-    // commentData כבר מכיל postId, name, email, body
-    setPageError(''); // איפוס שגיאות עמוד
-    const newComment = await addComment(commentData);
-    setComments(prevComments => [...prevComments, newComment].sort((a,b) => a.id - b.id));
+    setPageError(null); 
+    try {
+        const newComment = await addComment(commentData);
+        setComments(prevComments => [...prevComments, newComment].sort((a,b) => a.id - b.id));
+    } catch (error) {
+        setPageError(error.message || "שגיאה בהוספת תגובה"); 
+        throw error; 
+    }
   };
 
+  const handleEditComment = async (commentId, updatedCommentData) => {
+    setPageError(null);
+    try {
+        const updated = await updateComment(commentId, updatedCommentData);
+        setComments(prevComments => prevComments.map(c => c.id === commentId ? updated : c).sort((a,b) => a.id - b.id));
+    } catch (error) {
+        setPageError(error.message || "שגיאה בעדכון תגובה");
+    }
+  };
 
-  if (loading && !selectedPost) return <div className="loading-text">טוען פוסטים...</div>;
-  // הצגת שגיאה כללית אם אין פוסטים וגם אין משתמש מחובר או הרשאה
-  if (pageError && !posts.length && (!user || (user && userId !== user.id.toString()))) return <div className="error-text">שגיאה: {pageError}</div>;
-  if (!user) return <div className="info-text">אנא התחבר כדי לראות את הפוסטים שלך.</div>;
-  // הצגת שגיאת הרשאה ספציפית
-  if (user && userId !== user.id.toString() && !loading) return <div className="error-text">אין לך הרשאה לצפות בפוסטים אלו.</div>;
+  const handleDeleteComment = async (commentId) => {
+    setPageError(null);
+    if (window.confirm("האם אתה בטוח שברצונך למחוק תגובה זו?")) {
+        try {
+            await deleteComment(commentId);
+            setComments(prevComments => prevComments.filter(c => c.id !== commentId));
+        } catch (error) {
+            setPageError(error.message || "שגיאה במחיקת תגובה");
+        }
+    }
+  };
 
+  const searchedPosts = useMemo(() => {
+    let processedPosts = [...posts];
+    if (searchTermTitle) {
+        processedPosts = processedPosts.filter(post =>
+            post.title.toLowerCase().includes(searchTermTitle.toLowerCase())
+        );
+    }
+    if (searchTermId) {
+        processedPosts = processedPosts.filter(post =>
+            post.id.toString().includes(searchTermId)
+        );
+    }
+    return processedPosts;
+  }, [posts, searchTermId, searchTermTitle]);
+
+
+  if (!user) return <div className="info-text">אנא התחבר כדי לצפות ולהשתתף בדיונים.</div>; 
+  if (loading && !selectedPost && !editingPost) return <div className="loading-text">טוען פוסטים...</div>;
+  if (pageError && !selectedPost && !editingPost && posts.length === 0) return <div className="error-text page-error-message">{pageError}</div>;
 
   return (
     <div className="posts-page-container">
-      <h1 className="page-title">הפוסטים שלי</h1>
+      <h1 className="page-title">כל הפוסטים</h1>
 
-      <button onClick={() => {setShowAddPostForm(!showAddPostForm); setFormError(''); setPageError('');}} className="button button-primary add-post-button">
-        {showAddPostForm ? 'בטל הוספת פוסט' : 'הוסף פוסט חדש'}
-      </button>
+      {!selectedPost && !editingPost && ( 
+        <>
+          <div className="controls-container posts-controls">
+            <div className="control-group">
+              <label htmlFor="search-post-title" className="form-label">חפש פוסט לפי כותרת:</label>
+              <input
+                id="search-post-title"
+                type="text"
+                placeholder="הקלד כותרת..."
+                value={searchTermTitle}
+                onChange={(e) => setSearchTermTitle(e.target.value)}
+                className="form-input"
+              />
+            </div>
+            <div className="control-group">
+              <label htmlFor="search-post-id" className="form-label">חפש פוסט לפי ID:</label>
+              <input
+                id="search-post-id"
+                type="text"
+                placeholder="הקלד ID..."
+                value={searchTermId}
+                onChange={(e) => setSearchTermId(e.target.value)}
+                className="form-input"
+              />
+            </div>
+          </div>
+          
+          <button onClick={() => {setShowAddPostForm(!showAddPostForm); setFormError(''); setEditingPost(null);}} className="button button-primary add-post-button">
+            {showAddPostForm ? 'בטל הוספת פוסט' : 'הוסף פוסט חדש'}
+          </button>
 
-      {showAddPostForm && (
-        <form onSubmit={handleAddPostSubmit} className="add-post-form">
-          <h3 className="form-title">יצירת פוסט חדש</h3>
-          <div>
-            <label htmlFor="post-title" className="form-label">כותרת:</label>
-            <input
-              id="post-title"
-              type="text"
-              value={newPostTitle}
-              onChange={(e) => setNewPostTitle(e.target.value)}
-              className="form-input"
-              required
+          {showAddPostForm && (
+            <PostForm 
+                onSubmit={handleAddPost} 
+                onCancel={() => {setShowAddPostForm(false); setFormError('');}}
+                formTitle="יצירת פוסט חדש"
             />
-          </div>
-          <div>
-            <label htmlFor="post-body" className="form-label">תוכן:</label>
-            <textarea
-              id="post-body"
-              value={newPostBody}
-              onChange={(e) => setNewPostBody(e.target.value)}
-              rows="5"
-              className="form-textarea"
-              required
-            />
-          </div>
+          )}
           {formError && <p className="form-error-message">{formError}</p>}
-          <button type="submit" className="button button-green">פרסם פוסט</button>
-        </form>
+        </>
+      )}
+
+      {editingPost && (
+          <PostForm 
+            onSubmit={handleUpdatePost}
+            initialData={editingPost}
+            onCancel={() => {setEditingPost(null); setFormError('');}}
+            formTitle="עריכת פוסט"
+          />
       )}
       
-      {pageError && !selectedPost && <p className="error-text page-error-message">{pageError}</p>}
+      {pageError && !selectedPost && !editingPost && <p className="error-text page-error-message">{pageError}</p>}
 
       {selectedPost ? (
         <PostDetailView 
@@ -245,20 +446,25 @@ export default function PostsPage() {
             comments={comments} 
             onAddComment={handleAddComment}
             onClose={handleCloseDetails}
-            currentUser={user} // העברת אובייקט המשתמש המלא
+            currentUser={user} 
+            onEditComment={handleEditComment}
+            onDeleteComment={handleDeleteComment}
         />
       ) : (
-        posts.length === 0 && !loading && !pageError ? ( // הצג רק אם אין שגיאה ואין טעינה
-          <p className="info-text">אין לך פוסטים כרגע.</p>
+        !editingPost && searchedPosts.length === 0 && !loading && !pageError ? ( 
+          <p className="info-text">לא נמצאו פוסטים התואמים לחיפוש, או שאין פוסטים עדיין.</p>
         ) : (
-          !pageError && // אל תציג רשימת פוסטים אם יש שגיאה כללית
+          !editingPost && !pageError &&
           <div className="post-list-container">
-            {posts.map(post => (
+            {searchedPosts.map(post => (
               <div key={post.id} className="post-list-item-wrapper">
-                <PostListItem post={post} onViewDetails={handleViewDetails} />
-                <button onClick={() => handleDeletePost(post.id)} className="button button-delete delete-post-list-button">
-                    מחק פוסט זה
-                </button>
+                <PostListItem 
+                    post={post} 
+                    onViewDetails={handleViewDetails} 
+                    onEditPost={handleEditPost}
+                    onDeletePost={handleDeletePost}
+                    currentUser={user}
+                />
               </div>
             ))}
           </div>
@@ -268,3 +474,4 @@ export default function PostsPage() {
     </div>
   );
 }
+
