@@ -136,6 +136,23 @@ export async function addComment(commentData) {
   return response.json();
 }
 
+export const createAlbum = async (userId, title) => {
+  const response = await fetch(`https://jsonplaceholder.typicode.com/albums`, {
+    method: 'POST',
+    body: JSON.stringify({
+      userId: userId,
+      title: title,
+    }),
+    headers: {
+      'Content-type': 'application/json; charset=UTF-8',
+    },
+  });
+  if (!response.ok) {
+    throw new Error('Failed to create album');
+  }
+  return await response.json();
+};
+
 export async function updateComment(commentId, commentData) { // <-- פונקציה חדשה לעדכון תגובה
   const response = await fetch(`${BASE_URL}/comments/${commentId}`, {
     method: 'PUT',
@@ -154,7 +171,6 @@ export async function deleteComment(commentId) { // <-- פונקציה חדשה 
   return response.json();
 }
 
-
 // --- Albums API ---
 export async function getAlbumsByUserId(userId) {
   const response = await fetch(`${BASE_URL}/albums?userId=${userId}`);
@@ -169,4 +185,50 @@ export async function getPhotosByAlbumId(albumId) {
   return response.json();
 }
 
+// (כאן אפשר להוסיף פונקציות ל-addPhoto, deletePhoto אם נדרש בפרויקט)
+export const addPhotoToAlbum = async (albumId, title, url, thumbnailUrl) => {
+  const response = await fetch(`https://jsonplaceholder.typicode.com/photos`, {
+    method: 'POST',
+    body: JSON.stringify({
+      albumId: albumId,
+      title: title,
+      url: url,
+      thumbnailUrl: thumbnailUrl,
+    }),
+    headers: {
+      'Content-type': 'application/json; charset=UTF-8',
+    },
+  });
+  if (!response.ok) {
+    throw new Error('Failed to add photo');
+  }
+  return await response.json();
+};
+
+export const updatePhoto = async (id, title, url, thumbnailUrl) => {
+  const response = await fetch(`https://jsonplaceholder.typicode.com/photos/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      title: title,
+      url: url,
+      thumbnailUrl: thumbnailUrl,
+    }),
+    headers: {
+      'Content-type': 'application/json; charset=UTF-8',
+    },
+  });
+  if (!response.ok) {
+    throw new Error('Failed to update photo');
+  }
+  return await response.json();
+};
+
+export const deletePhoto = async (id) => {
+  const response = await fetch(`https://jsonplaceholder.typicode.com/photos/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error('Failed to delete photo');
+  }
+};
 
