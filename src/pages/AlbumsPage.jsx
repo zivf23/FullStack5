@@ -1,7 +1,7 @@
 // src/pages/AlbumsPage.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom'; // Link might be used later for individual album view
-import { useAuth } from '../App';
+import { useAuth } from '../App.jsx';
 import { getAlbumsByUserId, getPhotosByAlbumId } from '../apiService'; // Assuming these functions
 
 // רכיב פנימי להצגת אלבום בודד
