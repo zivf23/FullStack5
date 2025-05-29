@@ -74,6 +74,7 @@ function AuthProvider({ children }) {
 // --- Navbar Component ---
 function Navbar() {
   const { user, logout } = useAuth();
+  console.log("Navbar rendered with user:", user);
   const navigate = useNavigate();
 
   const handleLogout = () => {

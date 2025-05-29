@@ -1,15 +1,15 @@
 // src/pages/AlbumsPage.js
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom'; // Link might be used later for individual album view
+import { useParams, Link } from 'react-router-dom'; // Link pourrait être utilisé plus tard pour la vue d'un album individuel
 import { useAuth } from '../App';
-import { getAlbumsByUserId, getPhotosByAlbumId } from '../apiService'; // Assuming these functions
+import { getAlbumsByUserId, getPhotosByAlbumId } from '../apiService'; // En supposant que ces fonctions existent
 
-// רכיב פנימי להצגת אלבום בודד
+// Composant interne pour afficher un album individuel
 function AlbumListItem({ album, onViewPhotos }) {
   return (
     <div className="album-list-item">
       <h3 className="album-item-title">{album.title}</h3>
-      {/* כאן אפשר להוסיף תמונה ממוזערת ראשונה מהאלבום אם רוצים */}
+      {/* Ici, on peut ajouter la première miniature de l'album si on le souhaite */}
       <button onClick={() => onViewPhotos(album.id)} className="button button-outline">
         הצג תמונות
       </button>
@@ -17,7 +17,7 @@ function AlbumListItem({ album, onViewPhotos }) {
   );
 }
 
-// רכיב פנימי להצגת תמונות באלבום
+// Composant interne pour afficher les photos d'un album
 function PhotoGridView({ photos, albumTitle, onClose }) {
     if (!photos || photos.length === 0) {
         return (
@@ -50,7 +50,7 @@ export default function AlbumsPage() {
   const { user } = useAuth();
   const { userId } = useParams();
   const [albums, setAlbums] = useState([]);
-  const [selectedAlbum, setSelectedAlbum] = useState(null); // For album title
+  const [selectedAlbum, setSelectedAlbum] = useState(null); // Pour le titre de l'album
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
@@ -133,3 +133,4 @@ export default function AlbumsPage() {
     </div>
   );
 }
+
