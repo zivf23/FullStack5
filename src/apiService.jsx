@@ -153,23 +153,6 @@ export const createAlbum = async (userId, title) => {
   return await response.json();
 };
 
-export const createAlbum = async (userId, title) => {
-  const response = await fetch(`https://jsonplaceholder.typicode.com/albums`, {
-    method: 'POST',
-    body: JSON.stringify({
-      userId: userId,
-      title: title,
-    }),
-    headers: {
-      'Content-type': 'application/json; charset=UTF-8',
-    },
-  });
-  if (!response.ok) {
-    throw new Error('Failed to create album');
-  }
-  return await response.json();
-};
-
 export async function updateComment(commentId, commentData) { // <-- פונקציה חדשה לעדכון תגובה
   const response = await fetch(`${BASE_URL}/comments/${commentId}`, {
     method: 'PUT',
@@ -187,18 +170,6 @@ export async function deleteComment(commentId) { // <-- פונקציה חדשה 
   if (!response.ok) throw new Error('שגיאה במחיקת תגובה');
   return response.json();
 }
-
-
-// --- Albums API ---
-
-export async function deleteComment(commentId) { // <-- פונקציה חדשה למחיקת תגובה
-  const response = await fetch(`${BASE_URL}/comments/${commentId}`, {
-    method: 'DELETE',
-  });
-  if (!response.ok) throw new Error('שגיאה במחיקת תגובה');
-  return response.json();
-}
-
 
 // --- Albums API ---
 export async function getAlbumsByUserId(userId) {
