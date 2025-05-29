@@ -1,7 +1,7 @@
-// src/pages/TodosPage.js
-import React, { useState, useEffect, useCallback } from 'react';
+// src/pages/TodosPage.jsx
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { useAuth } from '../App';
+import { useAuth } from '../App.jsx'; // ודא שהנתיב נכון אם App.js/jsx נמצא במקום אחר
 import { getTodosByUserId, addTodo, updateTodo, deleteTodo } from '../apiService';
 
 // רכיב פנימי להצגת משימה בודדת
@@ -16,7 +16,8 @@ function TodoItem({ todo, onToggleComplete, onDelete, onEdit }) {
           className="todo-item-checkbox"
         />
         <span className={`todo-item-title ${todo.completed ? 'todo-item-title-completed' : ''}`}>
-          {todo.title}
+          {/* הצגת ID להמחשה, אפשר להסיר אם לא נדרש בתצוגה הסופית */}
+          (ID: {todo.id}) {todo.title}
         </span>
       </div>
       <div className="todo-item-actions">
@@ -48,9 +49,8 @@ function TodoForm({ onSubmit, initialData = null, onCancelEdit }) {
       return;
     }
     try {
-      // ה-onSubmit יקבל את הנתונים ויטפל בשליחה לשרת
       await onSubmit({ title, completed: initialData ? initialData.completed : false });
-      if (!initialData) setTitle(''); // איפוס רק אם זה טופס הוספה
+      if (!initialData) setTitle('');
     } catch (err) {
       setError(err.message || (initialData ? "שגיאה בעדכון משימה" : "שגיאה בהוספת משימה"));
     }
@@ -85,17 +85,26 @@ function TodoForm({ onSubmit, initialData = null, onCancelEdit }) {
   );
 }
 
-
 export default function TodosPage() {
   const { user } = useAuth();
-  const { userId } = useParams(); 
-  const [todos, setTodos] = useState([]);
+  const { userId } = useParams();
+  const [todos, setTodos] = useState([]); // רשימת המשימות המקורית מהשרת
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [editingTodo, setEditingTodo] = useState(null); 
+  const [editingTodo, setEditingTodo] = useState(null);
+
+  // State עבור מיון
+  const [sortBy, setSortBy] = useState('id'); // 'id', 'title', 'completed'
+  const [sortOrder, setSortOrder] = useState('asc'); // 'asc', 'desc'
+
+  // State עבור חיפוש/סינון
+  const [searchTermTitle, setSearchTermTitle] = useState('');
+  const [filterCompleted, setFilterCompleted] = useState('all'); // 'all', 'completed', 'active'
+  const [searchTermId, setSearchTermId] = useState('');
+
 
   const fetchTodos = useCallback(async () => {
-    if (user && userId === user.id.toString()) { 
+    if (user && userId === user.id.toString()) {
       setLoading(true);
       setError(null);
       try {
@@ -107,9 +116,9 @@ export default function TodosPage() {
         setLoading(false);
       }
     } else if (user && userId !== user.id.toString()) {
-        setError("אין לך הרשאה לצפות במשימות אלו.");
-        setLoading(false);
-        setTodos([]);
+      setError("אין לך הרשאה לצפות במשימות אלו.");
+      setLoading(false);
+      setTodos([]);
     }
   }, [user, userId]);
 
@@ -120,16 +129,16 @@ export default function TodosPage() {
   const handleAddOrEditTodo = async (todoData) => {
     setError('');
     try {
-      if (editingTodo) { 
+      if (editingTodo) {
         const updated = await updateTodo(editingTodo.id, { ...editingTodo, ...todoData });
         setTodos(prevTodos => prevTodos.map(t => (t.id === updated.id ? updated : t)));
-        setEditingTodo(null); 
-      } else { 
-        const newTodo = await addTodo({ ...todoData, userId: parseInt(user.id) }); // Ensure userId is a number if API expects it
-        setTodos(prevTodos => [newTodo, ...prevTodos]); 
+        setEditingTodo(null);
+      } else {
+        const newTodo = await addTodo({ ...todoData, userId: parseInt(user.id) });
+        setTodos(prevTodos => [newTodo, ...prevTodos]);
       }
     } catch (err) {
-        setError(err.message || "שגיאה בשמירת המשימה");
+      setError(err.message || "שגיאה בשמירת המשימה");
     }
   };
 
@@ -140,47 +149,155 @@ export default function TodosPage() {
       const updated = await updateTodo(todoToUpdate.id, updatedTodoData);
       setTodos(prevTodos => prevTodos.map(t => (t.id === updated.id ? updated : t)));
     } catch (err) {
-        setError(err.message || "שגיאה בעדכון סטטוס המשימה");
+      setError(err.message || "שגיאה בעדכון סטטוס המשימה");
     }
   };
 
   const handleDeleteTodo = async (todoId) => {
     setError('');
-    // מומלץ להחליף את confirm במודל מותאם אישית כפי שנדרש בפרויקט
-    if (confirm("האם אתה בטוח שברצונך למחוק משימה זו?")) { 
-        try {
-            await deleteTodo(todoId);
-            setTodos(prevTodos => prevTodos.filter(t => t.id !== todoId));
-        } catch (err) {
-            setError(err.message || "שגיאה במחיקת המשימה");
-        }
+    // TODO: החלף את confirm במודל מותאם אישית
+    if (window.confirm("האם אתה בטוח שברצונך למחוק משימה זו?")) {
+      try {
+        await deleteTodo(todoId);
+        setTodos(prevTodos => prevTodos.filter(t => t.id !== todoId));
+      } catch (err) {
+        setError(err.message || "שגיאה במחיקת המשימה");
+      }
     }
   };
+
+  // לוגיקה לסינון ומיון של רשימת המשימות
+  // useMemo מבטיח שהחישוב המורכב הזה ירוץ רק אם התלויות שלו משתנות
+  const filteredAndSortedTodos = useMemo(() => {
+    let processedTodos = [...todos];
+
+    // 1. סינון לפי מצב ביצוע
+    if (filterCompleted === 'completed') {
+      processedTodos = processedTodos.filter(todo => todo.completed);
+    } else if (filterCompleted === 'active') {
+      processedTodos = processedTodos.filter(todo => !todo.completed);
+    }
+
+    // 2. סינון לפי חיפוש בכותרת (לא תלוי רישיות)
+    if (searchTermTitle) {
+      processedTodos = processedTodos.filter(todo =>
+        todo.title.toLowerCase().includes(searchTermTitle.toLowerCase())
+      );
+    }
+    
+    // 3. סינון לפי חיפוש ב-ID
+    if (searchTermId) {
+        processedTodos = processedTodos.filter(todo =>
+            todo.id.toString().includes(searchTermId)
+        );
+    }
+
+    // 4. מיון
+    processedTodos.sort((a, b) => {
+      let compareA = a[sortBy];
+      let compareB = b[sortBy];
+
+      // המרה למספרים אם ממיינים לפי ID
+      if (sortBy === 'id') {
+        compareA = parseInt(compareA, 10);
+        compareB = parseInt(compareB, 10);
+      }
+      // טיפול במצב בוליאני (completed)
+      else if (sortBy === 'completed') {
+        compareA = a.completed ? 1 : 0;
+        compareB = b.completed ? 1 : 0;
+      }
+      // טיפול במחרוזות (title) - לא תלוי רישיות
+      else if (typeof compareA === 'string') {
+        compareA = compareA.toLowerCase();
+        compareB = compareB.toLowerCase();
+      }
+
+      if (compareA < compareB) {
+        return sortOrder === 'asc' ? -1 : 1;
+      }
+      if (compareA > compareB) {
+        return sortOrder === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+
+    return processedTodos;
+  }, [todos, sortBy, sortOrder, searchTermTitle, filterCompleted, searchTermId]);
+
 
   if (loading) return <div className="loading-text">טוען משימות...</div>;
   if (error && !todos.length && (!user || userId !== user.id.toString())) return <div className="error-text">שגיאה: {error}</div>;
   if (!user) return <div className="info-text">אנא התחבר כדי לראות את המשימות שלך.</div>;
-  // If user is logged in but trying to access someone else's todos and fetchTodos has set an error
-  if (error && userId !== user.id.toString()) return <div className="error-text">שגיאה: {error}</div>;
+  if (user && userId !== user.id.toString() && !loading && !error) return <div className="error-text">אין לך הרשאה לצפות במשימות אלו.</div>;
 
 
   return (
     <div className="todos-page-container">
       <h1 className="page-title">רשימת המשימות שלי</h1>
-      <TodoForm 
-        onSubmit={handleAddOrEditTodo} 
+      <TodoForm
+        onSubmit={handleAddOrEditTodo}
         initialData={editingTodo}
         onCancelEdit={() => setEditingTodo(null)}
       />
       {error && <p className="form-error-message page-error-message">{error}</p>}
-      
-      {todos.length === 0 && !loading && (
-        <p className="info-text">אין לך משימות כרגע. למה שלא תוסיף אחת?</p>
+
+      {/* פקדי מיון וסינון */}
+      <div className="controls-container">
+        <div className="control-group">
+          <label htmlFor="sort-by" className="form-label">מיין לפי:</label>
+          <select id="sort-by" value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="form-select">
+            <option value="id">ID</option>
+            <option value="title">כותרת</option>
+            <option value="completed">מצב ביצוע</option>
+          </select>
+          <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} className="form-select">
+            <option value="asc">עולה</option>
+            <option value="desc">יורד</option>
+          </select>
+        </div>
+
+        <div className="control-group">
+          <label htmlFor="filter-title" className="form-label">חפש בכותרת:</label>
+          <input
+            id="filter-title"
+            type="text"
+            placeholder="הקלד לחיפוש..."
+            value={searchTermTitle}
+            onChange={(e) => setSearchTermTitle(e.target.value)}
+            className="form-input"
+          />
+        </div>
+        
+        <div className="control-group">
+          <label htmlFor="filter-id" className="form-label">חפש ID:</label>
+          <input
+            id="filter-id"
+            type="text"
+            placeholder="הקלד ID..."
+            value={searchTermId}
+            onChange={(e) => setSearchTermId(e.target.value)}
+            className="form-input"
+          />
+        </div>
+
+        <div className="control-group">
+          <label htmlFor="filter-completed" className="form-label">סנן לפי מצב:</label>
+          <select id="filter-completed" value={filterCompleted} onChange={(e) => setFilterCompleted(e.target.value)} className="form-select">
+            <option value="all">הכל</option>
+            <option value="active">פעילות</option>
+            <option value="completed">הושלמו</option>
+          </select>
+        </div>
+      </div>
+
+      {filteredAndSortedTodos.length === 0 && !loading && (
+        <p className="info-text">לא נמצאו משימות התואמות לחיפוש/סינון, או שאין לך משימות עדיין.</p>
       )}
-      
-      {todos.length > 0 && (
+
+      {filteredAndSortedTodos.length > 0 && (
         <ul className="todo-list">
-          {todos.map(todo => (
+          {filteredAndSortedTodos.map(todo => (
             <TodoItem
               key={todo.id}
               todo={todo}
