@@ -1,6 +1,5 @@
-// src/pages/HomePage.js
 import React from 'react';
-import { useAuth } from '../App'; // ייבוא useAuth מ-App.js
+import { useAuth } from '../App';
 import { Link } from 'react-router-dom';
 
 export default function HomePage() {
@@ -35,7 +34,6 @@ export default function HomePage() {
         <p><strong>שם מלא:</strong> {user.name}</p>
         <p><strong>שם משתמש:</strong> {user.username}</p>
         <p><strong>אימייל:</strong> {user.email}</p>
-        {/* אפשר להוסיף כאן עוד פרטים אם קיימים באובייקט המשתמש */}
       </div>
     </div>
   );

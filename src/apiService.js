@@ -1,8 +1,7 @@
-// src/apiService.js (או apiService.jsx)
+
 
 const BASE_URL = 'http://localhost:3001'; 
 
-// ... (פונקציות קיימות כמו getUserByUsername, registerUser, וכו' נשארות) ...
 
 // --- User API ---
 export async function getUserByUsername(username) {

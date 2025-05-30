@@ -1,12 +1,8 @@
-// src/pages/AuthPage.jsx
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // removed useLocation as 'from' is not strictly used for redirect target now
+import { useNavigate } from 'react-router-dom'; 
 import { useAuth } from '../App.jsx'; 
 import { getUserByUsername, registerUser } from '../apiService';
 
-// LoginForm and RegisterFormStep1, RegisterFormStep2 remain the same as before
-// ... (קוד הרכיבים הפנימיים LoginForm, RegisterFormStep1, RegisterFormStep2 נשאר ללא שינוי מהגרסה הקודמת שסיפקתי) ...
-// רק לוודא שהם קוראים ל-onLogin ו-onRegister בהתאמה.
 
 // רכיב פנימי לטופס התחברות
 function LoginForm({ onLogin }) {

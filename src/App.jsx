@@ -1,8 +1,7 @@
-// src/App.js
 
 import React, { useState, useContext, createContext, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, Navigate, useLocation } from 'react-router-dom';
-import './styles.css'; // <-- ייבוא קובץ ה-CSS שלנו
+import './styles.css';
 
 // --- Pages ---
 import AuthPage from './pages/AuthPage';
@@ -70,7 +69,6 @@ function AuthProvider({ children }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-
 // --- Navbar Component ---
 function Navbar() {
   const { user, logout } = useAuth();
@@ -108,7 +106,6 @@ function Navbar() {
     </nav>
   );
 }
-
 // --- ProtectedRoute Component ---
 function ProtectedRoute({ children }) {
   const { user, loadingAuth } = useAuth();
@@ -146,7 +143,6 @@ function AppContent() {
     );
 }
 
-
 // --- Main App Component ---
 export default function App() {
   return (
@@ -158,7 +154,7 @@ export default function App() {
             <AppContent />
           </main>
           <footer className="app-footer">
-            <p>© {new Date().getFullYear()} פרויקט ניהול תוכן אישי</p>
+            <p>© {new Date().getFullYear()}  - יונה וזיו פרויקט ניהול תוכן</p>
           </footer>
         </div>
       </Router>

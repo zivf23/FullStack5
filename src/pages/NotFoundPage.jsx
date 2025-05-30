@@ -1,8 +1,6 @@
-// src/pages/NotFoundPage.js
+
 import React from 'react';
 import { Link } from 'react-router-dom';
-// ודא שקובץ ה-CSS הראשי שלך (למשל App.css) מיובא איפשהו באפליקציה,
-// או שאתה מייבא קובץ CSS ספציפי לעמוד זה אם יש צורך.
 
 export default function NotFoundPage() {
   return (
