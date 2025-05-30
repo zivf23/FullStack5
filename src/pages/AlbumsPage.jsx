@@ -25,6 +25,15 @@ function PhotoGridView({ photos, albumTitle, onClose, onAddPhoto, onUpdatePhoto,
   const [newPhotoTitleUpdate, setNewPhotoTitleUpdate] = useState('');
   const [newPhotoUrlUpdate, setNewPhotoUrlUpdate] = useState('');
   const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [photosPerPage] = useState(10); // Nombre de photos par page
+
+  // Calculer l'index de la première et de la dernière photo sur la page actuelle
+  const indexOfLastPhoto = currentPage * photosPerPage;
+  const indexOfFirstPhoto = indexOfLastPhoto - photosPerPage;
+  const currentPhotos = photos.slice(indexOfFirstPhoto, indexOfLastPhoto);
+
+  const totalPages = Math.ceil(photos.length / photosPerPage);
 
   const handleAddPhoto = async () => {
     try {
@@ -32,7 +41,7 @@ function PhotoGridView({ photos, albumTitle, onClose, onAddPhoto, onUpdatePhoto,
         alert('Please fill all fields');
         return;
       }
-      await onAddPhoto(newPhotoTitleAdd, newPhotoUrlAdd, newPhotoUrlAdd); // Copier l'URL dans thumbnailUrl
+      await onAddPhoto(newPhotoTitleAdd, newPhotoUrlAdd);
       setNewPhotoTitleAdd('');
       setNewPhotoUrlAdd('');
     } catch (err) {
@@ -46,7 +55,7 @@ function PhotoGridView({ photos, albumTitle, onClose, onAddPhoto, onUpdatePhoto,
         alert('Please fill all fields and select a photo');
         return;
       }
-      await onUpdatePhoto(selectedPhoto.id, newPhotoTitleUpdate, newPhotoUrlUpdate, newPhotoUrlUpdate); // Copier l'URL dans thumbnailUrl
+      await onUpdatePhoto(selectedPhoto.id, newPhotoTitleUpdate, newPhotoUrlUpdate);
       setSelectedPhoto(null);
       setNewPhotoTitleUpdate('');
       setNewPhotoUrlUpdate('');
@@ -64,6 +73,18 @@ function PhotoGridView({ photos, albumTitle, onClose, onAddPhoto, onUpdatePhoto,
       alert(err.message);
     }
   };
+
+  const handleNextPage = () => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  };
+
+  const handlePreviousPage = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  };
+
+  useEffect(() => {
+    setCurrentPage(1); // Reset to page 1 when photos change
+  }, [photos]);
 
   return (
     <div className="photo-grid-view">
@@ -123,7 +144,7 @@ function PhotoGridView({ photos, albumTitle, onClose, onAddPhoto, onUpdatePhoto,
       <button onClick={handleUpdatePhoto} className="button button-primary">Update Photo</button>
 
       <div className="photo-grid">
-        {photos.map(photo => (
+        {currentPhotos.map(photo => (
           <div key={photo.id} className="photo-grid-item">
             <img src={photo.thumbnailUrl} alt={photo.title} className="photo-thumbnail" onClick={() => {
               setSelectedPhoto(photo);
@@ -134,6 +155,16 @@ function PhotoGridView({ photos, albumTitle, onClose, onAddPhoto, onUpdatePhoto,
             <button onClick={() => handleDeletePhoto(photo.id)} className="button button-outline">Delete</button>
           </div>
         ))}
+      </div>
+
+      <div className="pagination-controls">
+        <button onClick={handlePreviousPage} disabled={currentPage === 1} className="button button-secondary">
+          Previous
+        </button>
+        <span>Page {currentPage} of {totalPages}</span>
+        <button onClick={handleNextPage} disabled={currentPage === totalPages} className="button button-primary">
+          Next
+        </button>
       </div>
     </div>
   );

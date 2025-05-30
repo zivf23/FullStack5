@@ -101,7 +101,6 @@ export default function TodosPage() {
 
 
   useEffect(() => {
-    // console.log('TodosPage useEffect triggered. User:', user, 'paramsUserId:', paramsUserId);
     setTodos([]);
     setError(null);
     setLoading(true);
@@ -109,26 +108,21 @@ export default function TodosPage() {
     if (user && user.id && paramsUserId === user.id.toString()) {
       getTodosByUserId(user.id)
         .then(data => {
-          // console.log('Fetched todos for user', user.id, ':', data);
           setTodos(data);
         })
         .catch(err => {
-          // console.error('Error fetching todos:', err);
           setError(err.message);
         })
         .finally(() => {
           setLoading(false);
         });
     } else if (user && user.id && paramsUserId !== user.id.toString()) {
-      // console.warn('Mismatched userId. Context user:', user.id, 'URL param:', paramsUserId);
       setError("אין לך הרשאה לצפות במשימות אלו.");
       setLoading(false);
     } else if (!user) {
-      // console.log('No user logged in, cannot fetch todos.');
       setError("אנא התחבר כדי לצפות במשימות."); 
       setLoading(false);
     } else {
-      // console.error('User object or paramsUserId is problematic.', user, paramsUserId);
       setError("שגיאה בזיהוי משתמש או פרמטרים נדרשים.");
       setLoading(false);
     }
@@ -136,13 +130,13 @@ export default function TodosPage() {
 
   const handleAddOrEditTodo = async (todoDataFromForm) => {
     setError(null); 
-    if (!user || typeof user.id === 'undefined' || user.id === null) { // בדיקה מחוזקת
+    if (!user || typeof user.id === 'undefined' || user.id === null) { 
         console.error('User or user.id is not defined/valid in handleAddOrEditTodo. User:', user);
         setError('שגיאה: פעולה זו דורשת משתמש מחובר עם מזהה תקין.');
         return;
     }
 
-    const currentUserId = user.id; // ללא parseInt, ישמור את ה-ID כפי שהוא (יכול להיות מחרוזת)
+    const currentUserId = user.id; 
 
     try {
       if (editingTodo) {
@@ -152,7 +146,6 @@ export default function TodosPage() {
         setEditingTodo(null);
       } else { 
         const payload = { ...todoDataFromForm, userId: currentUserId }; 
-        // console.log('Payload for new todo:', payload); 
         const newTodo = await addTodo(payload);
         setTodos(prevTodos => [newTodo, ...prevTodos]);
       }
@@ -168,7 +161,6 @@ export default function TodosPage() {
         return;
     }
     try {
-      // שולחים את ה-userId כפי שהוא (יכול להיות מחרוזת)
       const updatedTodoData = { ...todoToUpdate, completed: !todoToUpdate.completed, userId: user.id };
       const updated = await updateTodo(todoToUpdate.id, updatedTodoData);
       setTodos(prevTodos => prevTodos.map(t => (t.id === updated.id ? updated : t)));
@@ -203,47 +195,45 @@ export default function TodosPage() {
     }
     if (searchTermId) {
         processedTodos = processedTodos.filter(todo =>
-            // אם ה-ID הוא מחרוזת, toString() לא נחוץ, אבל לא מזיק
             todo.id.toString().includes(searchTermId) 
         );
     }
+    
+    // --- לוגיקת מיון מתוקנת ---
     processedTodos.sort((a, b) => {
-      let compareA = a[sortBy];
-      let compareB = b[sortBy];
-      // אם ממיינים לפי ID וה-ID הוא מחרוזת שיכולה להכיל אותיות, המיון יהיה אלפביתי.
-      // אם ה-ID הוא תמיד מספר (גם אם שמור כמחרוזת), parseInt עדיין יכול להיות שימושי למיון מספרי נכון.
-      // כרגע נשאיר את המיון כפי שהוא, בהנחה ש-ID הוא לרוב מספרי או שמיון אלפביתי שלו מספק.
+      let valA = a[sortBy];
+      let valB = b[sortBy];
+
       if (sortBy === 'id') {
-         // אם ה-ID יכול להיות מחרוזת לא מספרית, נמיין כמחרוזת.
-         // אם הוא תמיד מספר (אפילו כמחרוזת), עדיף parseInt.
-         // נניח כרגע שהוא יכול להיות מחרוזת כללית.
-         compareA = a.id.toString();
-         compareB = b.id.toString();
-      }
-      else if (sortBy === 'completed') {
-        compareA = a.completed ? 1 : 0;
-        compareB = b.completed ? 1 : 0;
-      }
-      else if (typeof compareA === 'string') {
-        compareA = compareA.toLowerCase();
-        compareB = compareB.toLowerCase();
-      }
+        const numA = parseInt(valA, 10);
+        const numB = parseInt(valB, 10);
 
-      // אם compareA או compareB הם NaN לאחר parseInt (במקרה ש-ID אינו מספרי טהור)
-      // המיון עלול לא להתנהג כמצופה. לכן, אם ID אינו תמיד מספר, עדיף למיין כמחרוזות.
-      if (isNaN(compareA) && !isNaN(compareB)) return 1; // NaN בסוף
-      if (!isNaN(compareA) && isNaN(compareB)) return -1; // NaN בסוף
-      if (isNaN(compareA) && isNaN(compareB)) return 0;
+        if (!isNaN(numA) && !isNaN(numB)) { // אם שניהם מספרים תקינים
+          valA = numA;
+          valB = numB;
+        } else { // לפחות אחד מהם אינו מספר טהור, או שניהם. נשווה כמחרוזות.
+          valA = valA.toString().toLowerCase();
+          valB = valB.toString().toLowerCase();
+        }
+      } else if (sortBy === 'completed') {
+        valA = a.completed ? 1 : 0; // true יהיה גדול מ-false (במיון עולה)
+        valB = b.completed ? 1 : 0;
+      } else if (typeof valA === 'string' && sortBy === 'title') { // מיון לפי כותרת
+        valA = valA.toLowerCase();
+        valB = valB.toLowerCase();
+      }
+      // (אם יש סוגי מיון נוספים, צריך להוסיף כאן תנאים)
 
-
-      if (compareA < compareB) {
+      if (valA < valB) {
         return sortOrder === 'asc' ? -1 : 1;
       }
-      if (compareA > compareB) {
+      if (valA > valB) {
         return sortOrder === 'asc' ? 1 : -1;
       }
       return 0;
     });
+    // --- סוף לוגיקת מיון מתוקנת ---
+
     return processedTodos;
   }, [todos, sortBy, sortOrder, searchTermTitle, filterCompleted, searchTermId]);
 
